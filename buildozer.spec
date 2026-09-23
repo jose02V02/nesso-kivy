@@ -4,7 +4,7 @@
 # See the end of the file for more details and warnings about common mistakes.
 
 [app]
-
+android.sdk_path = /usr/local/lib/android/sdk
 # (str) Title of your application
 title = Nesso
 
