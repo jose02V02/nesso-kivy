@@ -56,6 +56,10 @@ jobs:
           ):
               app.pop(key, None)
 
+          # Nesso: quaderni e migrazione locale
+          app["package.name"] = "nessoquaderni"
+          app["title"] = "Nesso Quaderni"
+          app["version"] = "0.2.0"
           app["requirements"] = "python3==3.11.5,hostpython3==3.11.5,kivy==2.3.0"
           app["p4a.commit"] = "957a3e5f8c270f7aa648ba185e5a68c1077a798d"
           app["android.api"] = "33"
