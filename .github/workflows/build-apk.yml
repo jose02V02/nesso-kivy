@@ -39,7 +39,7 @@ jobs:
       - name: Install Android SDK Build Tools
         run: |
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;37.0.0"
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
