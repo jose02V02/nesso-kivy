@@ -2,70 +2,98 @@ name: Build Nesso APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 90
 
     steps:
-      - name: Checkout Nesso
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            git \
-            zip \
-            unzip \
-            openjdk-17-jdk \
-            python3-pip \
-            python3-setuptools \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            zlib1g-dev
+            build-essential git zip unzip autoconf automake \
+            libtool libltdl-dev pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev libtinfo5 \
+            cmake libffi-dev libssl-dev patch
+          python -m pip install "pip==24.3.1"
+          python -m pip install \
+            "buildozer==1.5.0" "Cython==0.29.37" \
+            "setuptools<70" wheel "virtualenv==20.26.6"
 
-      - name: Prepare Android SDK
+      - name: Configure Android build
         run: |
-          export ANDROID_HOME=/usr/local/lib/android/sdk
-          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          python - <<'PY'
+          from configparser import ConfigParser
+          from pathlib import Path
 
-      - name: Create legacy SDK tools path
-        run: |
-          mkdir -p "$ANDROID_HOME/tools/bin"
-          ln -sf "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/tools/bin/sdkmanager"
+          path = Path("buildozer.spec")
+          config = ConfigParser(interpolation=None)
+          config.read(path)
+          app = config["app"]
 
-      - name: Install Android SDK components
-        run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;37.0.0"
+          for key in (
+              "android.sdk_path", "android.ndk_path",
+              "android.ant_path", "p4a.source_dir",
+              "p4a.local_recipes", "p4a.extra_args",
+          ):
+              app.pop(key, None)
 
-      - name: Install Buildozer
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install buildozer cython==0.29.37
+          app["requirements"] = "python3==3.11.5,hostpython3==3.11.5,kivy==2.3.0"
+          app["p4a.commit"] = "957a3e5f8c270f7aa648ba185e5a68c1077a798d"
+          app["android.api"] = "33"
+          app["android.minapi"] = "24"
+          app["android.ndk_api"] = "24"
+          app["android.ndk"] = "25b"
+          app["android.accept_sdk_license"] = "True"
+
+          excluded = app.get("source.exclude_dirs", "").split(",")
+          excluded += [
+              ".git", ".github", ".buildozer", ".host-tools",
+              "nesso-env", "p4a-local", "bin",
+          ]
+          app["source.exclude_dirs"] = ",".join(
+              dict.fromkeys(x.strip() for x in excluded if x.strip())
+          )
+
+          with path.open("w") as output:
+              config.write(output)
+          print(path.read_text())
+          PY
 
       - name: Build APK
         run: |
-          buildozer -v android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee build-github.log
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: nesso-apk
           path: bin/*.apk
+          if-no-files-found: error
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nesso-build-log
+          path: build-github.log
+          if-no-files-found: ignore
