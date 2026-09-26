@@ -72,8 +72,17 @@ def import_backup(db, bundle):
             if first is None:
                 first = book
             for index, note in enumerate(pages):
-                page_id = db.execute('INSERT INTO pages(notebook_id,title,body) VALUES (?,?,?)',
-                                     (book, note['titolo'], note['testo'])).lastrowid
+                page_id = db.execute(
+                    '''INSERT INTO pages(
+                           notebook_id,title,body,sort_order
+                       ) VALUES (?,?,?,?)''',
+                    (
+                        book,
+                        note['titolo'],
+                        note['testo'],
+                        index + 1
+                    )
+                ).lastrowid
                 db.execute('INSERT INTO legacy_pages VALUES (?,?,?,?,?)',
                            (page_id, digest, name, index, json.dumps(note, ensure_ascii=False)))
         db.execute('UPDATE imports SET first_notebook=? WHERE digest=?', (first, digest))
