@@ -14,6 +14,9 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.widget import Widget
 
 
 class NotebookStore:
@@ -96,16 +99,189 @@ class NessoApp(App):
         row.add_widget(self.button('Importa ZIP', self.select_backup))
         row.add_widget(self.button('Archivio', self.show_archive))
         root.add_widget(row)
-        self.page_title = TextInput(multiline=False, hint_text='Titolo della pagina',
-                                    font_size='20sp', size_hint_y=None, height=dp(50),
-                                    padding=[dp(12), dp(10)])
+        # Titolo documento
+        self.page_title = TextInput(
+            multiline=False,
+            hint_text='Titolo della pagina',
+            font_size='20sp',
+            size_hint_y=None,
+            height=dp(50),
+            padding=[dp(12), dp(10)]
+        )
         root.add_widget(self.page_title)
-        self.editor = TextInput(multiline=True, hint_text='Inizia a scrivere...',
-                                font_size='19sp', padding=[dp(18), dp(18)],
-                                background_normal='', background_active='',
-                                background_color=(1, 1, 1, 1),
-                                foreground_color=(0.12, 0.18, 0.16, 1))
-        root.add_widget(self.editor)
+
+        # ---------------------------------------------------------
+        # NESSO A4 EDITOR 1.0
+        # Toolbar stile elaboratore di testi
+        # ---------------------------------------------------------
+        toolbar_scroll = ScrollView(
+            size_hint_y=None,
+            height=dp(52),
+            do_scroll_y=False,
+            bar_width=0
+        )
+
+        toolbar = BoxLayout(
+            size_hint_x=None,
+            height=dp(52),
+            spacing=dp(5),
+            padding=[dp(4), dp(4)]
+        )
+        toolbar.bind(minimum_width=toolbar.setter('width'))
+
+        def tool(text, width=48):
+            b = Button(
+                text=text,
+                size_hint=(None, None),
+                width=dp(width),
+                height=dp(44),
+                font_size='16sp',
+                background_normal='',
+                background_color=(0.96, 0.97, 0.96, 1),
+                color=(0.10, 0.18, 0.15, 1)
+            )
+            return b
+
+        self.undo_button = tool('↶')
+        self.redo_button = tool('↷')
+
+        self.bold_button = tool('B')
+        self.italic_button = tool('I')
+        self.underline_button = tool('U')
+        self.strike_button = tool('S')
+
+        self.h1_button = tool('H1', 54)
+        self.h2_button = tool('H2', 54)
+        self.h3_button = tool('H3', 54)
+
+        self.bullet_button = tool('•', 48)
+        self.number_button = tool('1.', 48)
+
+        self.outdent_button = tool('←', 48)
+        self.indent_button = tool('→', 48)
+
+        self.align_left_button = tool('≡', 48)
+        self.align_center_button = tool('≣', 48)
+
+        self.smaller_button = tool('A−', 54)
+        self.larger_button = tool('A+', 54)
+
+        for item in (
+            self.undo_button,
+            self.redo_button,
+            self.bold_button,
+            self.italic_button,
+            self.underline_button,
+            self.strike_button,
+            self.h1_button,
+            self.h2_button,
+            self.h3_button,
+            self.bullet_button,
+            self.number_button,
+            self.outdent_button,
+            self.indent_button,
+            self.align_left_button,
+            self.align_center_button,
+            self.smaller_button,
+            self.larger_button
+        ):
+            toolbar.add_widget(item)
+
+        toolbar_scroll.add_widget(toolbar)
+        root.add_widget(toolbar_scroll)
+
+        # ---------------------------------------------------------
+        # Area documento
+        # ---------------------------------------------------------
+        self.document_scroll = ScrollView(
+            do_scroll_x=False,
+            bar_width=dp(5)
+        )
+
+        self.document_area = GridLayout(
+            cols=1,
+            size_hint_y=None,
+            spacing=dp(24),
+            padding=[dp(12), dp(18), dp(12), dp(30)]
+        )
+        self.document_area.bind(
+            minimum_height=self.document_area.setter('height')
+        )
+
+        # Primo foglio A4.
+        # Il rapporto 1 : 1.414 riproduce le proporzioni ISO A4.
+        self.paper = BoxLayout(
+            orientation='vertical',
+            size_hint=(None, None),
+            width=dp(690),
+            height=dp(976),
+            padding=[dp(55), dp(58), dp(55), dp(45)]
+        )
+
+        # Centra il foglio quando lo schermo è più largo.
+        paper_row = BoxLayout(
+            size_hint_y=None,
+            height=dp(976)
+        )
+        paper_row.add_widget(Widget())
+        paper_row.add_widget(self.paper)
+        paper_row.add_widget(Widget())
+
+        self.editor = TextInput(
+            multiline=True,
+            hint_text='Inizia a scrivere...',
+            font_size='18sp',
+            size_hint=(1, 1),
+            padding=[dp(8), dp(8)],
+            background_normal='',
+            background_active='',
+            background_color=(1, 1, 1, 1),
+            foreground_color=(0.10, 0.13, 0.12, 1),
+            cursor_color=(0.08, 0.30, 0.22, 1)
+        )
+
+        self.paper.add_widget(self.editor)
+
+        self.page_number = Label(
+            text='Pag. 1',
+            color=(0.40, 0.43, 0.41, 1),
+            font_size='12sp',
+            halign='right',
+            valign='middle',
+            size_hint_y=None,
+            height=dp(26)
+        )
+        self.page_number.bind(
+            size=lambda obj, value: setattr(obj, 'text_size', value)
+        )
+        self.paper.add_widget(self.page_number)
+
+        self.document_area.add_widget(paper_row)
+        self.document_scroll.add_widget(self.document_area)
+        root.add_widget(self.document_scroll)
+
+        # Funzioni già operative nella prima versione.
+        self.undo_button.bind(
+            on_release=lambda *_: self.editor.do_undo()
+        )
+        self.redo_button.bind(
+            on_release=lambda *_: self.editor.do_redo()
+        )
+        self.bullet_button.bind(
+            on_release=lambda *_: self.insert_prefix('• ')
+        )
+        self.number_button.bind(
+            on_release=lambda *_: self.insert_prefix('1. ')
+        )
+        self.indent_button.bind(
+            on_release=lambda *_: self.insert_prefix('    ')
+        )
+        self.smaller_button.bind(
+            on_release=lambda *_: self.change_font_size(-1)
+        )
+        self.larger_button.bind(
+            on_release=lambda *_: self.change_font_size(1)
+        )
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         self.status = Label(text='', color=(0.18, 0.35, 0.28, 1), font_size='13sp')
         row.add_widget(self.status)
@@ -125,6 +301,25 @@ class NessoApp(App):
                         background_color=(0.16, 0.36, 0.29, 1))
         button.bind(on_release=callback)
         return button
+
+    def insert_prefix(self, prefix):
+        if self.editor.disabled:
+            return
+        pos = self.editor.cursor_index()
+        self.editor.text = (
+            self.editor.text[:pos] +
+            prefix +
+            self.editor.text[pos:]
+        )
+        self.editor.cursor = self.editor.get_cursor_from_index(
+            pos + len(prefix)
+        )
+        self.editor.focus = True
+
+    def change_font_size(self, delta):
+        current = float(self.editor.font_size)
+        self.editor.font_size = max(dp(12), min(dp(34), current + dp(delta)))
+        self.editor.focus = True
 
     def changed(self, *args):
         if self.loading:

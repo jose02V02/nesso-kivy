@@ -4,7 +4,6 @@
 # See the end of the file for more details and warnings about common mistakes.
 
 [app]
-android.sdk_path = /usr/local/lib/android/sdk
 # (str) Title of your application
 title = Nesso
 
@@ -43,7 +42,7 @@ version = 0.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
 requirements = python3,kivy
-
+android.sdk_path = /usr/local/lib/android/sdk
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
 # requirements.source.kivy = ../../kivy
@@ -338,7 +337,7 @@ android.allow_backup = True
 #p4a.branch = master
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
-#p4a.commit = HEAD
+p4a.commit = 957a3e5f8c270f7aa648ba185e5a68c1077a798d
 
 # (str) python-for-android git clone directory
 #p4a.source_dir =
